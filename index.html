@@ -1,0 +1,917 @@
+bash
+
+cat > /mnt/user-data/outputs/passbook-printer.html <<'EOF'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Passbook front page printer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap">
+<style id="pageStyle">@page{size:179mm 91.5mm;margin:0}</style>
+<style>
+:root{
+  --bg:#E8EDF1; --surface:#FFFFFF; --surface2:#F1F4F8; --ink:#14213A; --muted:#55657D;
+  --line:#C9D3DE; --accent:#0A5C7A; --accent-ink:#FFFFFF; --warn:#9A4308;
+  --okText:#17683B; --focus:#1E7FD6; --mark:#D9480F;
+  --ui:"Hanken Grotesk","Noto Sans Devanagari",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1622; --surface:#16202F; --surface2:#1C2839; --ink:#E6ECF4; --muted:#96A6BC;
+    --line:#2B3A4F; --accent:#54B8DE; --accent-ink:#06202B; --warn:#F0A468; --okText:#66D08F; --focus:#6DB3F2; --mark:#FF8A5B;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1622; --surface:#16202F; --surface2:#1C2839; --ink:#E6ECF4; --muted:#96A6BC;
+  --line:#2B3A4F; --accent:#54B8DE; --accent-ink:#06202B; --warn:#F0A468; --okText:#66D08F; --focus:#6DB3F2; --mark:#FF8A5B;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.app{max-width:1180px;margin:0 auto;padding:16px 14px 96px}
+.top h1{margin:4px 0 4px;font-size:1.35rem;line-height:1.2;font-weight:700;letter-spacing:-.01em}
+.top p{margin:0 0 14px;color:var(--muted);max-width:64ch}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 4px;font-size:1.02rem;font-weight:650}
+.note{margin:0 0 10px;color:var(--muted);font-size:.9rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface2);border-radius:9px;padding:10px 14px;min-height:44px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn.wide{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.small{min-height:38px;padding:6px 10px;font-weight:500;font-size:.92rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.status{margin:8px 0 0;font-size:.92rem;min-height:1.3em}
+.status.ok{color:var(--okText)} .status.warn{color:var(--warn)}
+#thumb{display:block;max-width:100%;max-height:150px;border-radius:8px;border:1px solid var(--line);margin:10px 0 0}
+
+.grp{margin:16px 0 8px;font-size:.95rem;font-weight:650}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:.88rem;font-weight:600;margin-bottom:4px}
+.field input,.field textarea{width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:7px;padding:10px 11px;min-height:44px}
+.field textarea{min-height:88px;resize:vertical}
+.field.auto input,.field.auto textarea{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.field.auto label::after{content:" · read from photo, please check";font-weight:400;color:var(--muted)}
+details.branchbox{margin:14px 0 4px;border:1px solid var(--line);border-radius:9px;padding:0 12px}
+details.branchbox summary{cursor:pointer;font-weight:650;font-size:.95rem;min-height:44px;display:flex;align-items:center}
+details.branchbox[open] summary{border-bottom:1px solid var(--line);margin-bottom:12px}
+
+/* preview */
+.toolrow{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px}
+.check{display:inline-flex;align-items:center;gap:8px;min-height:36px;font-size:.93rem}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.frame{display:grid;grid-template-columns:18px minmax(0,1fr);grid-template-rows:14px auto;color:var(--muted)}
+.corner{font:600 8px/14px var(--ui);text-align:center}
+.ruler{overflow:hidden;line-height:0}
+.stage{position:relative;overflow:hidden;background:var(--line);touch-action:pan-y}
+.stage.drag{touch-action:none}
+.sheet.pv{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.sheet .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}
+.pv .fld{user-select:none;-webkit-user-select:none}
+.pv.guides .fld{outline:.25mm dashed rgba(10,92,122,.85);background:rgba(10,92,122,.07);min-height:1.25em}
+.pv .fld.sel{outline:.4mm solid #D9480F;background:rgba(217,72,15,.10);min-height:1.25em}
+.pv .tag{display:none;position:absolute;left:0;bottom:100%;font:600 2.3mm/1.1 "Hanken Grotesk",Arial,sans-serif;font-weight:600;color:#0A5C7A;white-space:nowrap;background:rgba(255,255,255,.9);padding:0 .5mm;z-index:2;letter-spacing:0;transform:none}
+.pv.guides .tag,.pv .fld.sel .tag{display:block}
+.pv .fld.sel .tag{color:#B93A08}
+.pv .pre{display:none;position:absolute;border:.25mm dashed rgba(90,100,125,.8);background:rgba(120,140,175,.10);color:rgba(50,60,85,.9);font:500 2.4mm/1.2 "Hanken Grotesk",Arial,sans-serif;padding:.5mm .8mm;pointer-events:none;overflow:hidden}
+.pv.pre-on .pre{display:block}
+.stage.drag .fld{cursor:grab}
+
+.nudgebar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:10px 0 2px;padding:8px 10px;background:var(--surface2);border:1px solid var(--line);border-radius:9px}
+.nudgebar .who{font-weight:600;font-size:.92rem;min-width:9ch}
+.pad{display:inline-grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,42px);gap:4px}
+.pad button{min-height:0;padding:0;font-size:1.1rem}
+.pad .u{grid-column:2;grid-row:1}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 10px;min-height:38px;cursor:pointer;font-size:.88rem}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.actions{margin-top:12px}
+.actions .btn{flex:1 1 150px}
+details.tips{margin-top:12px;font-size:.92rem;color:var(--muted)}
+details.tips summary{cursor:pointer;color:var(--ink);font-weight:600;min-height:32px}
+details.tips ul{margin:6px 0 0;padding-left:20px}
+
+/* layout tab */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.num{display:block;font-size:.85rem;font-weight:600}
+.num input,.num select{display:block;width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--line);border-radius:7px;padding:9px 10px;min-height:42px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.chip{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:6px 12px;min-height:36px;cursor:pointer;font-size:.9rem}
+.chip[aria-pressed="true"]{background:var(--mark);border-color:var(--mark);color:#fff;font-weight:600}
+.chip.off{opacity:.55;text-decoration:line-through}
+input[type=range]{width:100%;accent-color:var(--accent)}
+
+/* tabs (phones and tablets) */
+.tabs{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs button{border:0;background:transparent;padding:12px 4px;min-height:54px;font-weight:600;color:var(--muted);border-top:3px solid transparent;cursor:pointer}
+.tabs button[aria-current="page"]{color:var(--accent);border-top-color:var(--accent)}
+
+.view{display:none}
+.app[data-view="details"] #v-details,
+.app[data-view="preview"] #v-preview,
+.app[data-view="layout"] #v-layout{display:block}
+
+/* laptop: everything on one screen */
+@media (min-width:960px){
+  .app{padding-bottom:32px}
+  .grid{display:grid;grid-template-columns:minmax(340px,410px) minmax(0,1fr);gap:0 20px;align-items:start}
+  .view{display:block!important}
+  #v-details{grid-column:1;grid-row:1 / span 2}
+  #v-preview{grid-column:2;grid-row:1}
+  #v-layout{grid-column:2;grid-row:2}
+  .tabs,[data-go]{display:none!important}
+}
+@media (min-width:1280px){
+  .app{max-width:1600px}
+  .grid{grid-template-columns:minmax(320px,370px) minmax(0,1fr) minmax(320px,370px)}
+  #v-details{grid-column:1;grid-row:1}
+  #v-preview{grid-column:2;grid-row:1;position:sticky;top:12px}
+  #v-layout{grid-column:3;grid-row:1}
+}
+
+/* printing: only the sheet is printed */
+#printRoot{position:fixed;left:-10000px;top:0;pointer-events:none}
+@media print{
+  html,body{background:#fff!important;margin:0!important;padding:0!important}
+  .app,.tabs{display:none!important}
+  #printRoot{position:absolute;left:0;top:0}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-view="details">
+  <header class="top">
+    <h1>Passbook front page printer</h1>
+    <p>Enter the customer's details or read them from a photo, check the preview, then print every line at its exact spot on the passbook page.</p>
+  </header>
+
+  <main class="grid">
+    <!-- DETAILS -->
+    <section class="view" id="v-details" aria-label="Customer details">
+      <div class="card" id="photoCard" hidden>
+        <h2>Fill from a photo</h2>
+        <p class="note">Use a photo of an account form or handwritten slip. It fills the account number, names, address and nomination when it can read them.</p>
+        <div class="row">
+          <label class="btn" for="photo">Choose photo</label>
+          <input class="sr" type="file" id="photo" accept="image/*">
+          <button class="btn primary" id="readBtn" type="button" disabled>Read details</button>
+          <button class="btn ghost" id="stopBtn" type="button" hidden>Stop</button>
+        </div>
+        <img id="thumb" alt="Selected photo" hidden>
+        <p class="status" id="photoStatus" role="status"></p>
+      </div>
+
+      <div class="card">
+        <h2>Details to print</h2>
+        <p class="note">Labels such as "Account No:" are printed for you. Empty lines are left blank.</p>
+        <h3 class="grp" style="margin-top:6px">Customer</h3>
+        <div id="fieldsCustomer"></div>
+        <details class="branchbox">
+          <summary>Branch details</summary>
+          <p class="note">Same for every customer of this branch. Saved on this device.</p>
+          <div id="fieldsBranch"></div>
+        </details>
+        <div class="row" style="margin-top:12px">
+          <button class="btn small" id="sampleBtn" type="button">Fill sample data</button>
+          <button class="btn small ghost" id="clearBtn" type="button">Clear customer</button>
+        </div>
+        <button class="btn primary wide" style="margin-top:12px" type="button" data-go="preview">Preview and print</button>
+      </div>
+    </section>
+
+    <!-- PREVIEW -->
+    <section class="view" id="v-preview" aria-label="Preview and print">
+      <div class="card">
+        <h2>Preview</h2>
+        <p class="note" id="pageInfo"></p>
+        <div class="toolrow">
+          <label class="check"><input type="checkbox" id="pre" checked> Show pre-printed areas</label>
+          <label class="check"><input type="checkbox" id="guides" checked> Show field boxes</label>
+          <label class="check"><input type="checkbox" id="dragMode"> Move fields by dragging</label>
+        </div>
+        <div class="frame">
+          <div class="corner">mm</div>
+          <div class="ruler" id="rulerTop"></div>
+          <div class="ruler" id="rulerLeft"></div>
+          <div class="stage" id="stage"><div class="sheet pv guides pre-on" id="page"></div></div>
+        </div>
+        <div class="nudgebar" aria-label="Nudge selected field">
+          <span class="who" id="selName"></span>
+          <div class="pad">
+            <button class="btn u" type="button" data-nudge="u" aria-label="Move up">&#8593;</button>
+            <button class="btn l" type="button" data-nudge="l" aria-label="Move left">&#8592;</button>
+            <button class="btn d" type="button" data-nudge="d" aria-label="Move down">&#8595;</button>
+            <button class="btn r" type="button" data-nudge="r" aria-label="Move right">&#8594;</button>
+          </div>
+          <div class="seg stepseg" role="group" aria-label="Step in millimetres"></div>
+        </div>
+        <div class="row actions">
+          <button class="btn primary" id="printBtn" type="button">Print</button>
+          <button class="btn" id="saveBtn" type="button">Save print file</button>
+        </div>
+        <p class="status" id="printStatus" role="status"></p>
+        <details class="tips">
+          <summary>Printing tips</summary>
+          <ul>
+            <li>Choose a paper size that matches the page size shown above (or the passbook size in a passbook printer), scale 100% or "Actual size", margins none, headers and footers off.</li>
+            <li>Do a test on plain paper first with "Fill sample data". Lay it over a real passbook page, hold both up to the light, then correct any shift under Layout.</li>
+            <li>If Print does nothing here, use Save print file, open the saved file in your browser and print from there.</li>
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <!-- LAYOUT -->
+    <section class="view" id="v-layout" aria-label="Layout">
+      <div class="card">
+        <h2>Page and printer</h2>
+        <p class="note">The page is the printed lower half of the open passbook, 179 mm wide. Positions were measured from a photo, so expect to nudge things by a millimetre or two after a test print.</p>
+        <div class="grid2">
+          <label class="num">Preset
+            <select id="preset">
+              <option value="179x91.5">Passbook page (179 × 91.5)</option>
+              <option value="210x148">A5 landscape (210 × 148)</option>
+              <option value="148x210">A5 portrait (148 × 210)</option>
+              <option value="210x297">A4 portrait (210 × 297)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label class="num">Font
+            <select id="fontSel">
+              <option value="dot">Passbook printer look</option>
+              <option value="sans">Sans (Arial)</option>
+              <option value="serif">Serif (Times)</option>
+            </select>
+          </label>
+          <label class="num">Page width (mm)<input type="number" id="pw" min="50" max="400" step="0.5"></label>
+          <label class="num">Page height (mm)<input type="number" id="ph" min="50" max="400" step="0.5"></label>
+          <label class="num">Shift everything right (mm)<input type="number" id="offx" min="-30" max="30" step="0.1"></label>
+          <label class="num">Shift everything down (mm)<input type="number" id="offy" min="-30" max="30" step="0.1"></label>
+          <label class="num">Character width (mm)<input type="number" id="cw" min="0.8" max="4" step="0.01"></label>
+          <label class="num">Line spacing (mm)<input type="number" id="lh" min="2" max="10" step="0.01"></label>
+        </div>
+        <p class="note" style="margin-top:8px">Passbook printers use 17 characters per inch (1.49 mm) and 6 lines per inch (4.23 mm). Character width only applies to the passbook printer look.</p>
+        <label class="check"><input type="checkbox" id="caps"> Print names and addresses in capital letters</label>
+      </div>
+
+      <div class="card">
+        <h2>Field positions</h2>
+        <p class="note">Pick a line, then type its position or use the arrows. Positions are in mm from the top-left corner of the page.</p>
+        <div class="chips" id="chips"></div>
+        <div class="grid2">
+          <label class="num">From left (mm)<input type="number" id="ex" min="0" max="400" step="0.1"></label>
+          <label class="num">From top (mm)<input type="number" id="ey" min="0" max="400" step="0.1"></label>
+          <label class="num">Text size (pt)<input type="number" id="esize" min="5" max="30" step="0.5"></label>
+          <label class="num">Box width (mm)<input type="number" id="ew" min="5" max="400" step="0.5"></label>
+        </div>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="eon"> Print this line</label>
+        <div class="nudgebar" style="margin-top:8px">
+          <div class="pad">
+            <button class="btn u" type="button" data-nudge="u" aria-label="Move up">&#8593;</button>
+            <button class="btn l" type="button" data-nudge="l" aria-label="Move left">&#8592;</button>
+            <button class="btn d" type="button" data-nudge="d" aria-label="Move down">&#8595;</button>
+            <button class="btn r" type="button" data-nudge="r" aria-label="Move right">&#8594;</button>
+          </div>
+          <div class="seg stepseg" role="group" aria-label="Step in millimetres"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Background guide</h2>
+        <p class="note">Add a scan or photo of a blank passbook page, cropped to the page. It shows behind the fields to help you line things up and is never printed.</p>
+        <div class="row">
+          <label class="btn small" for="bgFile">Choose image</label>
+          <input class="sr" type="file" id="bgFile" accept="image/*">
+          <button class="btn small ghost" id="bgClear" type="button" hidden>Remove</button>
+        </div>
+        <label class="num" style="margin-top:10px">Guide strength<input type="range" id="bgOp" min="0.1" max="1" step="0.05" value="0.5"></label>
+      </div>
+
+      <div class="card">
+        <h2>Save your layout</h2>
+        <p class="note">Your layout and branch details are remembered on this device. Customer details are never stored.</p>
+        <div class="row">
+          <button class="btn small" id="expBtn" type="button">Export layout</button>
+          <label class="btn small" for="impFile">Import layout</label>
+          <input class="sr" type="file" id="impFile" accept=".json,application/json">
+          <button class="btn small ghost" id="resetBtn" type="button">Reset to defaults</button>
+        </div>
+        <p class="status" id="layoutStatus" role="status"></p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <button type="button" data-tab="details" aria-current="page">Details</button>
+    <button type="button" data-tab="preview">Preview and print</button>
+    <button type="button" data-tab="layout">Layout</button>
+  </nav>
+</div>
+
+<div id="printRoot" aria-hidden="true"><div class="sheet"></div></div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(s, r){ return (r||document).querySelector(s); };
+  var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+  var MM = 96/25.4, PT = 25.4/72;
+
+  var FONTS = {
+    dot:  '"Courier New", Courier, "Liberation Mono", "Noto Sans Devanagari", monospace',
+    sans: 'Arial, Helvetica, "Noto Sans Devanagari", sans-serif',
+    serif:'"Times New Roman", Times, "Noto Sans Devanagari", serif'
+  };
+
+  /* One entry per printed line or block. prefix / suffix are printed around the value. */
+  var META = [
+    {id:'branchPlace', group:'branch',   type:'text', label:'Branch place',      chip:'Branch place', caps:true, ph:'DEORIA (UP)'},
+    {id:'accountNo',   group:'customer', type:'text', label:'Account number',    chip:'Account No', prefix:'Account No: ', num:true},
+    {id:'hdrHolder',   type:'static', chip:'Heading: holders', text:'Name And Address Of Account Holder/s:'},
+    {id:'holders',     group:'customer', type:'area', label:'Account holder name (joint holders on the next lines)', chip:'Holder names', caps:true, title:true, ph:'Mr. Name Surname'},
+    {id:'address',     group:'customer', type:'area', label:'Address (up to 4 lines)', chip:'Address', caps:true, ph:'House / locality\nArea\nCity\nPIN code'},
+    {id:'nomination',  group:'customer', type:'text', label:'Nomination (Y or N)', chip:'Nomination', prefix:'Nomination: ', upper:true},
+    {id:'tollFree',    group:'branch',   type:'text', label:'Toll free number',  chip:'Toll free No', prefix:'Toll Free No.: ', num:true},
+    {id:'hdrBranch',   type:'static', chip:'Heading: branch', text:'Branch Address And Tel No.:'},
+    {id:'branchAddr',  group:'branch',   type:'area', label:'Branch address (4 lines)', chip:'Branch address', caps:true},
+    {id:'branchTel',   group:'branch',   type:'text', label:'Branch telephone',  chip:'Branch tel', prefix:'Tel: ', num:true},
+    {id:'micr',        group:'branch',   type:'text', label:'MICR code',         chip:'MICR', prefix:'MICR Code: ', num:true},
+    {id:'ifsc',        group:'branch',   type:'text', label:'IFSC code',         chip:'IFSC', prefix:'IFSC Code: ', upper:true},
+    {id:'date',        group:'customer', type:'text', label:'Date',              chip:'Date', suffix:' .', ph:'dd/mm/yyyy', num:true}
+  ];
+
+  /* starting positions in mm from the top-left corner of the printed page (measured from the passbook photo) */
+  var DEF = {
+    branchPlace:{x:77.9, y:18.7, size:11, w:80, on:true},
+    accountNo:  {x:77.9, y:22.9, size:11, w:80, on:true},
+    hdrHolder:  {x:95.4, y:30.5, size:11, w:82, on:true},
+    holders:    {x:95.4, y:34.7, size:11, w:82, on:true},
+    address:    {x:95.4, y:47.2, size:11, w:82, on:true},
+    nomination: {x:122.9,y:59.7, size:11, w:40, on:true},
+    tollFree:   {x:95.4, y:68.3, size:11, w:60, on:true},
+    hdrBranch:  {x:11.9, y:31.9, size:11, w:43, on:true},
+    branchAddr: {x:11.9, y:36.2, size:11, w:43, on:true},
+    branchTel:  {x:11.9, y:53.1, size:11, w:43, on:true},
+    micr:       {x:11.9, y:61.4, size:11, w:43, on:true},
+    ifsc:       {x:11.9, y:65.7, size:11, w:43, on:true},
+    date:       {x:11.9, y:69.9, size:11, w:40, on:true}
+  };
+
+  /* pre-printed parts of the page, shown only as a guide and never printed */
+  var PRE = [
+    {x:11.9, y:4.9,  w:43.3, h:13.6, t:'Bank logo'},
+    {x:55.5, y:39.6, w:32.4, h:37.8, t:'Photo'},
+    {x:11.5, y:74.4, w:20,   h:5,    t:'Date'},
+    {x:119.5,y:72.5, w:17,   h:9,    t:'Officer'},
+    {x:144.5,y:72.5, w:19,   h:9,    t:'Manager'}
+  ];
+
+  var BRANCH_DEF = {
+    branchPlace:'DEORIA (UP)', branchAddr:'DAKSHINESHWAR\nANSARI ROAD\nDEORIA, UTTAR PRADESH\n274001',
+    branchTel:'222308', micr:'274016989', ifsc:'CBIN0280200', tollFree:'18002001911'
+  };
+  var SAMPLE = {
+    holders:'Mr. Rajesh Kumar Sharma', address:'Gandhi Nagar\nNear City Hospital\nDeoria\n274001',
+    accountNo:'1234567890', nomination:'N'
+  };
+
+  var SHEET_CSS =
+    '.sheet{position:relative;overflow:hidden;background:#fff;color:#000;box-sizing:border-box}' +
+    '.sheet .fld{position:absolute;box-sizing:content-box}' +
+    '.sheet .fld.one .val{display:inline-block;white-space:nowrap}' +
+    '.sheet .fld.multi .val{display:block;white-space:pre-wrap;overflow-wrap:anywhere}';
+  var st = document.createElement('style'); st.textContent = SHEET_CSS; document.head.appendChild(st);
+
+  /* shrinks single-line values wider than their box (a plain function so it can be copied into the saved print file) */
+  function fitAll(root){
+    var list = root.querySelectorAll('.fld.one');
+    for (var i=0;i<list.length;i++){
+      var el = list[i], v = el.querySelector('.val');
+      if (!v) continue;
+      v.style.fontSize = '';
+      var f = parseFloat(el.getAttribute('data-sx')) || 1;
+      var max = el.clientWidth / f;
+      if (!max) continue;
+      var w = v.offsetWidth;
+      if (w > max) v.style.fontSize = (Math.max(max / w, 0.55) * 100) + '%';
+    }
+  }
+
+  /* ---------- state ---------- */
+  var KEY = 'passbook-layout-v2', BKEY = 'passbook-branch-v1';
+  var S = { page:{w:179,h:91.5}, off:{x:0,y:0}, font:'dot', caps:true, cw:1.49, lh:4.23, fields:{} };
+  var D = {};              // customer details stay in memory only
+  var auto = {};
+  var sel = 'holders', guides = true, showPre = true, dragMode = false, step = 0.5, k = 1;
+  var bg = { data:null, op:0.5 };
+  var sample = null, dl = null, photoFile = null, ctl = null, drag = null;
+
+  function clamp(v,a,b){ return Math.min(b, Math.max(a, v)); }
+  function r1(v){ return Math.round(v*10)/10; }
+  function num(v,a,b,d){ var n = parseFloat(v); return isFinite(n) ? clamp(n,a,b) : d; }
+  function metaOf(id){ for (var i=0;i<META.length;i++) if (META[i].id===id) return META[i]; return null; }
+  function pad2(n){ return (n<10?'0':'') + n; }
+  function today(){ var d = new Date(); return pad2(d.getDate()) + '/' + pad2(d.getMonth()+1) + '/' + d.getFullYear(); }
+
+  function resetLayout(){
+    S.page = {w:179,h:91.5}; S.off = {x:0,y:0}; S.font = 'dot'; S.caps = true; S.cw = 1.49; S.lh = 4.23; S.fields = {};
+    META.forEach(function(m){ var d = DEF[m.id]; S.fields[m.id] = {x:d.x,y:d.y,size:d.size,w:d.w,on:d.on}; });
+  }
+  function layoutOnly(){ return {page:S.page, off:S.off, font:S.font, caps:S.caps, cw:S.cw, lh:S.lh, fields:S.fields}; }
+  function mergeLayout(o){
+    if (!o || typeof o !== 'object') return false;
+    if (o.page){ S.page.w = num(o.page.w,50,400,S.page.w); S.page.h = num(o.page.h,50,400,S.page.h); }
+    if (o.off){ S.off.x = num(o.off.x,-30,30,0); S.off.y = num(o.off.y,-30,30,0); }
+    if (o.font && FONTS[o.font]) S.font = o.font;
+    if (typeof o.caps === 'boolean') S.caps = o.caps;
+    S.cw = num(o.cw,0.8,4,S.cw); S.lh = num(o.lh,2,10,S.lh);
+    if (o.fields){
+      META.forEach(function(m){
+        var f = o.fields[m.id], L = S.fields[m.id];
+        if (!f) return;
+        L.x = num(f.x,0,400,L.x); L.y = num(f.y,0,400,L.y); L.size = num(f.size,5,30,L.size); L.w = num(f.w,5,400,L.w);
+        if (typeof f.on === 'boolean') L.on = f.on;
+      });
+    }
+    return true;
+  }
+  function saveLayout(){ try{ localStorage.setItem(KEY, JSON.stringify(layoutOnly())); }catch(e){} }
+  function loadLayout(){ try{ var raw = localStorage.getItem(KEY); if (raw) mergeLayout(JSON.parse(raw)); }catch(e){} }
+
+  function branchIds(){ return META.filter(function(m){ return m.group === 'branch'; }).map(function(m){ return m.id; }); }
+  function saveBranch(){ try{ var o = {}; branchIds().forEach(function(id){ o[id] = D[id] || ''; }); localStorage.setItem(BKEY, JSON.stringify(o)); }catch(e){} }
+  function loadBranch(){
+    branchIds().forEach(function(id){ D[id] = BRANCH_DEF[id] || ''; });
+    try{
+      var raw = localStorage.getItem(BKEY);
+      if (raw){ var o = JSON.parse(raw); branchIds().forEach(function(id){ if (typeof o[id] === 'string') D[id] = o[id]; }); }
+    }catch(e){}
+  }
+  function resetCustomer(){
+    META.forEach(function(m){ if (m.group === 'customer') D[m.id] = ''; });
+    D.nomination = 'N'; D.date = today(); auto = {};
+  }
+
+  /* ---------- text ---------- */
+  function capsLine(s, withTitle){
+    if (withTitle){
+      var mt = s.match(/^(mr|mrs|ms|miss|dr|smt|shri|shrimati|kumari|master)\b\.?\s+(.*)$/i);
+      if (mt){
+        var w = mt[1], t = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        if (/^(mr|mrs|ms|dr)$/i.test(w)) t += '.';
+        return t + ' ' + mt[2].toUpperCase();
+      }
+    }
+    return s.toUpperCase();
+  }
+  function composed(m){
+    if (m.type === 'static') return m.text;
+    var t = (D[m.id] || '').replace(/\r/g,'').trim();
+    if (!t) return '';
+    if (m.upper) t = t.toUpperCase();
+    else if (S.caps && m.caps) t = t.split('\n').map(function(l){ return capsLine(l, m.title); }).join('\n');
+    return (m.prefix || '') + t + (m.suffix || '');
+  }
+
+  /* ---------- sheet rendering ---------- */
+  function renderSheet(root, preview){
+    root.textContent = '';
+    root.style.width = S.page.w + 'mm';
+    root.style.height = (preview ? S.page.h : S.page.h - 0.3) + 'mm';
+    root.style.fontFamily = FONTS[S.font];
+    root.style.fontWeight = S.font === 'dot' ? '700' : '400';
+    if (preview && bg.data){
+      var im = new Image(); im.className = 'bg'; im.alt = ''; im.src = bg.data; im.style.opacity = bg.op;
+      root.appendChild(im);
+    }
+    if (preview){
+      PRE.forEach(function(p){
+        var d = document.createElement('div'); d.className = 'pre'; d.textContent = p.t;
+        d.style.left = p.x + 'mm'; d.style.top = p.y + 'mm'; d.style.width = p.w + 'mm'; d.style.height = p.h + 'mm';
+        root.appendChild(d);
+      });
+    }
+    META.forEach(function(m){
+      var L = S.fields[m.id];
+      if (!L.on) return;
+      var el = document.createElement('div');
+      el.className = 'fld ' + (m.type === 'area' ? 'multi' : 'one');
+      el.dataset.id = m.id;
+      el.style.left = (L.x + S.off.x) + 'mm';
+      el.style.top = (L.y + S.off.y) + 'mm';
+      el.style.width = L.w + 'mm';
+      el.style.fontSize = L.size + 'pt';
+      el.style.lineHeight = S.lh + 'mm';
+      var f = 1;
+      if (S.font === 'dot') f = clamp(S.cw / (0.6 * L.size * PT), 0.3, 1.5);
+      el.setAttribute('data-sx', f);
+      var v = document.createElement('span'); v.className = 'val';
+      v.textContent = composed(m);
+      if (f !== 1){
+        v.style.transform = 'scaleX(' + f + ')'; v.style.transformOrigin = '0 0';
+        if (m.type === 'area') v.style.width = (100 / f) + '%';
+      }
+      el.appendChild(v);
+      if (preview){
+        if (m.id === sel) el.classList.add('sel');
+        var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = m.chip;
+        el.appendChild(tag);
+      }
+      root.appendChild(el);
+    });
+    fitAll(root);
+  }
+
+  function renderAll(){
+    $('#pageStyle').textContent = '@page{size:' + S.page.w + 'mm ' + S.page.h + 'mm;margin:0}';
+    var page = $('#page');
+    page.classList.toggle('guides', guides);
+    page.classList.toggle('pre-on', showPre);
+    renderSheet(page, true);
+    renderSheet($('#printRoot .sheet'), false);
+    $('#pageInfo').textContent = 'Page size ' + S.page.w + ' × ' + S.page.h + ' mm. Only the text is printed; boxes, rulers and pre-printed areas are guides.';
+    fitPreview();
+  }
+
+  function rulers(){
+    var W = S.page.w, H = S.page.h, pw = W*MM*k, ph = H*MM*k, mm, p, t;
+    var a = '<svg width="' + (pw+1) + '" height="14" stroke="currentColor" stroke-width="1" fill="currentColor" font-size="8" font-family="Hanken Grotesk, Arial, sans-serif" aria-hidden="true">';
+    for (mm=0; mm<=W; mm+=5){
+      p = mm*MM*k; t = (mm%10===0) ? 9 : 5;
+      a += '<line x1="' + p + '" y1="' + (14-t) + '" x2="' + p + '" y2="14"/>';
+      if (mm%20===0 && mm>0) a += '<text x="' + (p+2) + '" y="8" stroke="none">' + mm + '</text>';
+    }
+    $('#rulerTop').innerHTML = a + '</svg>';
+    var b = '<svg width="18" height="' + (ph+1) + '" stroke="currentColor" stroke-width="1" fill="currentColor" font-size="8" font-family="Hanken Grotesk, Arial, sans-serif" aria-hidden="true">';
+    for (mm=0; mm<=H; mm+=5){
+      p = mm*MM*k; t = (mm%10===0) ? 9 : 5;
+      b += '<line x1="' + (18-t) + '" y1="' + p + '" x2="18" y2="' + p + '"/>';
+      if (mm%20===0 && mm>0) b += '<text x="1" y="' + (p+9) + '" stroke="none">' + mm + '</text>';
+    }
+    $('#rulerLeft').innerHTML = b + '</svg>';
+  }
+
+  function fitPreview(){
+    var stage = $('#stage'), avail = stage.clientWidth;
+    if (!avail) return;
+    k = Math.min(avail / (S.page.w*MM), 2.4);
+    $('#page').style.transform = 'scale(' + k + ')';
+    stage.style.height = (S.page.h*MM*k) + 'px';
+    rulers();
+  }
+
+  /* ---------- selection and editor ---------- */
+  function select(id){
+    sel = id;
+    $$('#page .fld').forEach(function(e){ e.classList.toggle('sel', e.dataset.id === id); });
+    renderEditor();
+  }
+  function renderEditor(){
+    var m = metaOf(sel), L = S.fields[sel];
+    $('#selName').textContent = m.chip;
+    $$('.chip').forEach(function(c){ c.setAttribute('aria-pressed', c.dataset.id === sel ? 'true' : 'false'); });
+    $('#ex').value = r1(L.x); $('#ey').value = r1(L.y); $('#esize').value = L.size; $('#ew').value = L.w;
+    $('#eon').checked = L.on;
+    $$('.stepseg button').forEach(function(b){ b.setAttribute('aria-pressed', parseFloat(b.dataset.step) === step ? 'true' : 'false'); });
+  }
+  function buildChips(){
+    var box = $('#chips'); box.textContent = '';
+    META.forEach(function(m){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.dataset.id = m.id; b.textContent = m.chip;
+      b.classList.toggle('off', !S.fields[m.id].on);
+      b.addEventListener('click', function(){ select(m.id); });
+      box.appendChild(b);
+    });
+  }
+  function refreshChips(){ $$('.chip').forEach(function(c){ c.classList.toggle('off', !S.fields[c.dataset.id].on); }); }
+  function buildSteps(){
+    $$('.stepseg').forEach(function(seg){
+      [0.1,0.5,1,5].forEach(function(s){
+        var b = document.createElement('button');
+        b.type = 'button'; b.dataset.step = s; b.textContent = s + ' mm';
+        b.addEventListener('click', function(){ step = s; renderEditor(); });
+        seg.appendChild(b);
+      });
+    });
+  }
+  function changed(){ saveLayout(); refreshChips(); syncForm(); renderAll(); renderEditor(); }
+
+  document.addEventListener('click', function(e){
+    var n = e.target.closest('[data-nudge]');
+    if (!n) return;
+    var L = S.fields[sel], d = n.dataset.nudge;
+    if (d==='l') L.x = r1(clamp(L.x - step, 0, 400));
+    if (d==='r') L.x = r1(clamp(L.x + step, 0, 400));
+    if (d==='u') L.y = r1(clamp(L.y - step, 0, 400));
+    if (d==='d') L.y = r1(clamp(L.y + step, 0, 400));
+    changed();
+  });
+
+  function bindEditor(){
+    function ed(id, key, a, b){
+      $('#'+id).addEventListener('input', function(){
+        var L = S.fields[sel]; L[key] = num(this.value, a, b, L[key]); saveLayout(); renderAll();
+      });
+    }
+    ed('ex','x',0,400); ed('ey','y',0,400); ed('esize','size',5,30); ed('ew','w',5,400);
+    $('#eon').addEventListener('change', function(){ S.fields[sel].on = this.checked; changed(); });
+    $('#pw').addEventListener('input', function(){ S.page.w = num(this.value,50,400,S.page.w); syncPreset(); saveLayout(); renderAll(); });
+    $('#ph').addEventListener('input', function(){ S.page.h = num(this.value,50,400,S.page.h); syncPreset(); saveLayout(); renderAll(); });
+    $('#offx').addEventListener('input', function(){ S.off.x = num(this.value,-30,30,0); saveLayout(); renderAll(); });
+    $('#offy').addEventListener('input', function(){ S.off.y = num(this.value,-30,30,0); saveLayout(); renderAll(); });
+    $('#cw').addEventListener('input', function(){ S.cw = num(this.value,0.8,4,S.cw); saveLayout(); renderAll(); });
+    $('#lh').addEventListener('input', function(){ S.lh = num(this.value,2,10,S.lh); saveLayout(); renderAll(); });
+    $('#fontSel').addEventListener('change', function(){ S.font = this.value; saveLayout(); renderAll(); });
+    $('#caps').addEventListener('change', function(){ S.caps = this.checked; saveLayout(); renderAll(); });
+    $('#preset').addEventListener('change', function(){
+      if (this.value === 'custom') return;
+      var p = this.value.split('x'); S.page.w = +p[0]; S.page.h = +p[1];
+      $('#pw').value = S.page.w; $('#ph').value = S.page.h; saveLayout(); renderAll();
+    });
+  }
+  function syncPreset(){
+    var key = S.page.w + 'x' + S.page.h, found = false;
+    $$('#preset option').forEach(function(o){ if (o.value === key) found = true; });
+    $('#preset').value = found ? key : 'custom';
+  }
+  function syncSettings(){
+    $('#pw').value = S.page.w; $('#ph').value = S.page.h; $('#offx').value = S.off.x; $('#offy').value = S.off.y;
+    $('#cw').value = S.cw; $('#lh').value = S.lh;
+    $('#fontSel').value = S.font; $('#caps').checked = S.caps; syncPreset();
+  }
+
+  /* ---------- dragging on the preview ---------- */
+  var stageEl = $('#stage');
+  stageEl.addEventListener('pointerdown', function(e){
+    var f = e.target.closest('.fld');
+    if (!f) return;
+    select(f.dataset.id);
+    if (!dragMode) return;
+    e.preventDefault();
+    try{ stageEl.setPointerCapture(e.pointerId); }catch(x){}
+    var L = S.fields[f.dataset.id];
+    drag = { id:f.dataset.id, sx:e.clientX, sy:e.clientY, ox:L.x, oy:L.y, el:f };
+  });
+  stageEl.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    var L = S.fields[drag.id];
+    L.x = r1(clamp(drag.ox + (e.clientX - drag.sx) / (MM*k), 0, S.page.w));
+    L.y = r1(clamp(drag.oy + (e.clientY - drag.sy) / (MM*k), 0, S.page.h));
+    drag.el.style.left = (L.x + S.off.x) + 'mm';
+    drag.el.style.top = (L.y + S.off.y) + 'mm';
+    renderEditor();
+  });
+  function endDrag(){ if (!drag) return; drag = null; saveLayout(); renderAll(); }
+  stageEl.addEventListener('pointerup', endDrag);
+  stageEl.addEventListener('pointercancel', endDrag);
+
+  /* ---------- details form ---------- */
+  function buildForm(){
+    ['customer','branch'].forEach(function(g){
+      var box = $(g === 'customer' ? '#fieldsCustomer' : '#fieldsBranch'); box.textContent = '';
+      META.forEach(function(m){
+        if (m.type === 'static' || m.group !== g) return;
+        var wrap = document.createElement('div'); wrap.className = 'field'; wrap.dataset.id = m.id;
+        var lab = document.createElement('label'); lab.htmlFor = 'f-' + m.id; lab.textContent = m.label;
+        var inp = document.createElement(m.type === 'area' ? 'textarea' : 'input');
+        inp.id = 'f-' + m.id; inp.autocomplete = 'off';
+        if (m.type !== 'area') inp.type = 'text';
+        if (m.num) inp.setAttribute('inputmode','numeric');
+        if (m.ph) inp.placeholder = m.ph;
+        inp.addEventListener('input', function(){
+          D[m.id] = inp.value; delete auto[m.id]; wrap.classList.remove('auto');
+          if (m.group === 'branch') saveBranch();
+          renderAll();
+        });
+        wrap.appendChild(lab); wrap.appendChild(inp); box.appendChild(wrap);
+      });
+    });
+  }
+  function syncForm(){
+    META.forEach(function(m){
+      if (m.type === 'static') return;
+      var wrap = $('.field[data-id="' + m.id + '"]'), inp = $('#f-' + m.id);
+      wrap.hidden = !S.fields[m.id].on;
+      if (inp.value !== (D[m.id] || '')) inp.value = D[m.id] || '';
+      wrap.classList.toggle('auto', !!auto[m.id]);
+    });
+  }
+
+  $('#sampleBtn').addEventListener('click', function(){
+    resetCustomer(); Object.keys(SAMPLE).forEach(function(id){ D[id] = SAMPLE[id]; });
+    syncForm(); renderAll();
+  });
+  $('#clearBtn').addEventListener('click', function(){ resetCustomer(); syncForm(); renderAll(); say('#photoStatus',''); });
+
+  /* ---------- photo reading ---------- */
+  var PROMPT =
+    "The attached image is a photo of a bank customer's details, for example an account opening form or a handwritten slip. " +
+    "Read the details below from it. Copy text exactly as written; do not correct, translate or guess. " +
+    "If a detail is not visible or you are not sure, use an empty string. Keep Hindi text in Devanagari as written.\n\n" +
+    "Keys:\n" +
+    "holders: the account holder's name, with a title such as Mr. or Mrs. only if written; put each joint holder on its own line, separated by a newline character\n" +
+    "address: the postal address as up to 4 short lines separated by newline characters (house or locality, area, city, PIN code)\n" +
+    "accountNo: the account number\n" +
+    "nomination: Y if the form shows a nominee has been named, N if it says there is none, otherwise an empty string\n\n" +
+    "Reply with only one JSON object that uses exactly these keys, each value a string.";
+  var EXTRACT = ['holders','address','accountNo','nomination'];
+
+  function say(id, msg, tone){
+    var el = $(id); if (!el) return;
+    el.textContent = msg || ''; el.className = 'status' + (tone ? ' ' + tone : '');
+  }
+
+  $('#photo').addEventListener('change', function(){
+    var f = this.files && this.files[0];
+    photoFile = f || null;
+    $('#readBtn').disabled = !f;
+    say('#photoStatus','');
+    var th = $('#thumb');
+    if (!f){ th.hidden = true; return; }
+    var fr = new FileReader();
+    fr.onload = function(){ th.src = fr.result; th.hidden = false; };
+    fr.readAsDataURL(f);
+  });
+  function busy(on){ $('#readBtn').disabled = on || !photoFile; $('#stopBtn').hidden = !on; }
+  $('#stopBtn').addEventListener('click', function(){ if (ctl) ctl.abort(); });
+
+  $('#readBtn').addEventListener('click', async function(){
+    if (!sample || !photoFile) return;
+    ctl = new AbortController(); busy(true);
+    say('#photoStatus','Reading the photo. This can take up to a minute.');
+    try{
+      var data = await sample.json(PROMPT, { images: photoFile, signal: ctl.signal, cache: false });
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw { code:'invalid_json' };
+      var n = 0;
+      EXTRACT.forEach(function(id){
+        var v = data[id];
+        if (typeof v === 'number') v = String(v);
+        if (typeof v !== 'string') return;
+        v = v.replace(/\r/g,'').trim().slice(0,400);
+        if (id === 'nomination'){ v = v.toUpperCase(); if (v !== 'Y' && v !== 'N') return; }
+        if (v){ D[id] = v; auto[id] = true; n++; }
+      });
+      syncForm(); renderAll();
+      if (n) say('#photoStatus','Filled ' + n + ' field' + (n===1?'':'s') + ' from the photo. Check each one against the original before printing.','ok');
+      else say('#photoStatus','No details could be read from that photo. Try a sharper, straight-on photo.','warn');
+    }catch(e){
+      var c = e && e.code, msg;
+      if (c === 'cancelled') msg = 'Stopped.';
+      else if (c === 'not_granted') msg = 'Photo reading was not allowed for this page. You can still type the details.';
+      else if (c === 'rate_limited') msg = 'Usage limit reached for now. Try again later, or type the details.';
+      else if (c === 'image_rejected') msg = 'That photo could not be used. Try a clear JPG or PNG under 20 MB.';
+      else if (c === 'invalid_json' || c === 'empty_completion') msg = 'The details could not be read from that photo. Try a sharper, straight-on photo.';
+      else if (c === 'refused') msg = 'This photo could not be read. Try a different one.';
+      else msg = 'Something went wrong while reading the photo. Try again.';
+      say('#photoStatus', msg, c === 'cancelled' ? '' : 'warn');
+    }finally{
+      busy(false); ctl = null;
+    }
+  });
+
+  /* ---------- background guide ---------- */
+  $('#bgFile').addEventListener('change', function(){
+    var f = this.files && this.files[0]; if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function(){ bg.data = fr.result; $('#bgClear').hidden = false; renderAll(); };
+    fr.readAsDataURL(f);
+  });
+  $('#bgClear').addEventListener('click', function(){ bg.data = null; this.hidden = true; $('#bgFile').value = ''; renderAll(); });
+  $('#bgOp').addEventListener('input', function(){ bg.op = +this.value; var im = $('#page .bg'); if (im) im.style.opacity = bg.op; });
+
+  /* ---------- preview toggles ---------- */
+  $('#guides').addEventListener('change', function(){ guides = this.checked; $('#page').classList.toggle('guides', guides); });
+  $('#pre').addEventListener('change', function(){ showPre = this.checked; $('#page').classList.toggle('pre-on', showPre); });
+  $('#dragMode').addEventListener('change', function(){ dragMode = this.checked; stageEl.classList.toggle('drag', dragMode); });
+
+  /* ---------- printing ---------- */
+  function hasData(){ return ['accountNo','holders','address'].some(function(id){ return (D[id] || '').trim(); }); }
+  var NEED = 'Add the account number, name or address first, or use Fill sample data for a test print.';
+
+  $('#printBtn').addEventListener('click', function(){
+    if (!hasData()){ say('#printStatus', NEED, 'warn'); return; }
+    renderAll();
+    try{ window.print(); }catch(e){}
+    say('#printStatus','If no print dialog opened, use Save print file, then open that file in your browser and print it.');
+  });
+
+  function docHTML(){
+    var sheet = $('#printRoot .sheet').outerHTML;
+    var css = '@page{size:' + S.page.w + 'mm ' + S.page.h + 'mm;margin:0}' +
+      'html,body{margin:0;padding:0;background:#e5e7eb}' + SHEET_CSS +
+      '.note{font:15px/1.4 Arial,sans-serif;color:#222;padding:12px 16px;background:#fff6d6}' +
+      '@media screen{.wrap{padding:16px}.sheet{box-shadow:0 0 0 1px #888}}' +
+      '@media print{.note{display:none}html,body{background:#fff}.wrap{padding:0}}';
+    return '<!doctype html><html><head><meta charset="utf-8"><title>Passbook front page</title>' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600&display=swap">' +
+      '<style>' + css + '</style></head><body>' +
+      '<div class="note">The print dialog opens by itself. If it does not, press Ctrl+P (or use your browser menu). Set scale to 100%, margins to None, and turn headers and footers off.</div>' +
+      '<div class="wrap">' + sheet + '</div>' +
+      '<script>' + fitAll.toString() +
+      ';function go(){fitAll(document);setTimeout(function(){window.print()},400)}' +
+      'if(document.fonts&&document.fonts.ready){document.fonts.ready.then(go)}else{window.addEventListener("load",go)}<\/script>' +
+      '</body></html>';
+  }
+
+  $('#saveBtn').addEventListener('click', async function(){
+    if (!dl) return;
+    if (!hasData()){ say('#printStatus', NEED, 'warn'); return; }
+    renderAll();
+    try{
+      await dl.save({ filename:'passbook-front-page.html', data:docHTML() });
+      say('#printStatus','Saved. Open the file in your browser and it will start the print dialog.','ok');
+    }catch(e){
+      if (e && e.code === 'declined') say('#printStatus','');
+      else say('#printStatus','The file could not be saved here.','warn');
+    }
+  });
+
+  /* ---------- layout backup ---------- */
+  $('#expBtn').addEventListener('click', async function(){
+    if (!dl){ say('#layoutStatus','Saving files is not available here.','warn'); return; }
+    try{
+      await dl.save({ filename:'passbook-layout.json', data:JSON.stringify(layoutOnly(), null, 2) });
+      say('#layoutStatus','Layout exported.','ok');
+    }catch(e){
+      var dec = e && e.code === 'declined';
+      say('#layoutStatus', dec ? '' : 'The layout could not be exported.', dec ? '' : 'warn');
+    }
+  });
+  $('#impFile').addEventListener('change', function(){
+    var f = this.files && this.files[0]; if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function(){
+      try{
+        if (!mergeLayout(JSON.parse(fr.result))) throw 0;
+        changed(); syncSettings(); say('#layoutStatus','Layout imported.','ok');
+      }catch(e){ say('#layoutStatus','That file is not a layout exported from this page.','warn'); }
+    };
+    fr.readAsText(f); this.value = '';
+  });
+  $('#resetBtn').addEventListener('click', function(){
+    resetLayout(); saveLayout(); syncSettings(); changed(); say('#layoutStatus','Layout reset to the starting positions.','ok');
+  });
+
+  /* ---------- tabs ---------- */
+  function go(view){
+    $('#app').dataset.view = view;
+    $$('.tabs button').forEach(function(b){ if (b.dataset.tab === view) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+    window.scrollTo(0,0);
+    requestAnimationFrame(function(){ fitPreview(); });
+  }
+  $$('.tabs button').forEach(function(b){ b.addEventListener('click', function(){ go(b.dataset.tab); }); });
+  $$('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ go(b.dataset.go); }); });
+
+  /* ---------- start ---------- */
+  resetLayout(); loadLayout(); loadBranch(); resetCustomer();
+  buildForm(); buildChips(); buildSteps(); bindEditor(); syncSettings(); syncForm(); renderAll(); renderEditor();
+  if (window.ResizeObserver) new ResizeObserver(function(){ fitPreview(); }).observe($('#stage'));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ renderAll(); });
+
+  (async function(){
+    try{
+      if (!window.claude || !window.claude.use){ $('#saveBtn').hidden = true; return; }
+      var res = await Promise.all([
+        window.claude.use('sample').catch(function(){ return null; }),
+        window.claude.use('downloads').catch(function(){ return null; })
+      ]);
+      dl = res[1];
+      if (!dl){ $('#saveBtn').hidden = true; $('#expBtn').disabled = true; }
+      var s = res[0];
+      if (s){
+        var lim = await s.limits().catch(function(){ return null; });
+        if (lim && lim.images){
+          sample = s;
+          $('#photo').accept = lim.images.mediaTypes.join(',');
+          $('#photoCard').hidden = false;
+        }
+      }
+    }catch(e){}
+  })();
+})();
+</script>
+</body>
+</html>
+EOF
+cd /tmp && python3 - <<'EOF'
+import re
+h=open('/mnt/user-data/outputs/passbook-printer.html',encoding='utf-8').read()
+m=re.findall(r'<script>(.*?)</script>',h,re.S)
+open('/tmp/x.js','w').write(m[-1])
+EOF
+node --check /tmp/x.js && echo SYNTAX_OK
