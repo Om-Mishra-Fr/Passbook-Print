@@ -1,11 +1,21 @@
 {
   "name": "passbook-printer",
   "version": "1.0.0",
+  "description": "Passbook front page printing",
   "main": "main.js",
+  "author": "Your Name",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win portable --publish never"
   },
   "devDependencies": {
-    "electron": "^28.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.example.passbookprinter",
+    "productName": "Passbook Printer",
+    "files": ["main.js", "index.html"],
+    "win": { "target": "portable" }
   }
 }
