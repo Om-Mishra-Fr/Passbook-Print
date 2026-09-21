@@ -15,7 +15,7 @@
   "build": {
     "appId": "com.example.passbookprinter",
     "productName": "Passbook Printer",
-    "files": ["main.js", "index.html"],
+    "files": ["main.js", "preload.js", "index.html"],
     "win": { "target": "portable" }
   }
 }
